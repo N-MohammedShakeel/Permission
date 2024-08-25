@@ -3,74 +3,50 @@ package com.example.permissions
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
 import android.widget.Button
+import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 
 class MainActivity : AppCompatActivity() {
+    private val REQUEST_CODE_PERMISSIONS = 101
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private val PERMISSIONS = arrayOf(
+        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.ACCESS_COARSE_LOCATION,
+        Manifest.permission.POST_NOTIFICATIONS
+    )
+    private var permissionIndex = 0
 
-    @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        var bt = findViewById<Button>(R.id.bt)
-        bt.setOnClickListener {
-            requestPermissions()
+        val button = findViewById<Button>(R.id.bt)
+        button.setOnClickListener {
+            requestNextPermission()
         }
-
     }
 
-    private fun hasWriteExternalStoragePermission() =
-
-        ActivityCompat.checkSelfPermission(
-            this,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
-        ) == PackageManager.PERMISSION_GRANTED
-
-    private fun hasLocationForegroundPermission() =
-
-        ActivityCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-
-    private fun hasLocationBackgroundPermission() =
-
-        ActivityCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_BACKGROUND_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-
-
-    @RequiresApi(Build.VERSION_CODES.Q)
-    private fun requestPermissions() {
-         var permissionsToRequest = mutableListOf<String>()
-
-        if (!hasWriteExternalStoragePermission()) {
-            permissionsToRequest.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-        }
-        if (!hasLocationForegroundPermission()) {
-            permissionsToRequest.add(Manifest.permission.ACCESS_COARSE_LOCATION)
-        }
-        if (!hasLocationBackgroundPermission()) {
-            permissionsToRequest.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-        }
-
-        if (permissionsToRequest.isNotEmpty()) {
-            ActivityCompat.requestPermissions(
-                this,
-                permissionsToRequest.toTypedArray(), 0
-            )
+    private fun requestNextPermission() {
+        if (permissionIndex < PERMISSIONS.size) {
+            val permission = PERMISSIONS[permissionIndex]
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, arrayOf(permission), REQUEST_CODE_PERMISSIONS)
+            } else {
+                // Permission already granted
+                Toast.makeText(this, "$permission already granted", Toast.LENGTH_SHORT).show()
+                permissionIndex++
+                requestNextPermission() // Request the next permission
+            }
         } else {
-            // All permissions are already granted
-            Log.d("Permission request", "All permissions are already granted")
+            Toast.makeText(this, "All permissions processed", Toast.LENGTH_SHORT).show()
         }
     }
-
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -78,13 +54,15 @@ class MainActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 0 && grantResults.isNotEmpty()) {
-            for (i in grantResults.indices) {
-                if (grantResults[i] == PackageManager.PERMISSION_GRANTED) {
-                    Log.d("Permission request", "${permissions[i]} is granted ")
-                }
+        if (requestCode == REQUEST_CODE_PERMISSIONS) {
+            val permission = permissions[0]
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "$permission granted", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "$permission denied", Toast.LENGTH_SHORT).show()
             }
+            permissionIndex++
+            requestNextPermission() // Request the next permission
         }
     }
-
 }
